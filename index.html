@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EGA FILMS — Portfolio</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Playfair+Display:wght@400;700&family=Lora:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Base */
+    html,body,#app { height:100%; }
+    body { margin:0; background:#000; color:#fff; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+
+    /* Video fondo */
+    #bg-wrap { position:fixed; inset:0; z-index:0; overflow:hidden; background:#000; }
+    #bgVideo { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); min-width:100%; min-height:100%; width:auto; height:auto; object-fit:cover; }
+    #overlay { position:fixed; inset:0; z-index:1; background:rgba(0,0,0,0); transition:background .28s ease; pointer-events:none; }
+    #overlay.dark { background:rgba(0,0,0,.55); }
+
+    /* App */
+    #app { position:relative; z-index:2; }
+
+    /* Hero / Interfaz principal */
+    .hero { min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:2rem; }
+    .title-h1 { font-weight:800; letter-spacing:-0.02em; font-family: 'Montserrat', sans-serif; }
+
+    /* Editable blocks visuals (only visible in edit mode) */
+    .editable { position:relative; }
+    .editable.editing { outline: 1px dashed rgba(255,255,255,.14); }
+    .drag-handle { display:none; position:absolute; right:8px; top:8px; z-index:60; background:rgba(0,0,0,.55); color:#fff; font-size:12px; padding:4px 6px; border-radius:6px; cursor:move; }
+    .editable.editing .drag-handle { display:block; }
+    /* CORRECCIÓN 3: Cursor para arrastrar la imagen directamente */
+    .editable.editing #titleImageContainer { cursor: move; }
+
+
+    /* Resizable: by default no scroll (locked), when editing allow overflow for resizing */
+    .resizable { resize: both; overflow: hidden; min-width:120px; min-height:40px; }
+    .editable.editing.resizable { overflow:auto; }
+
+    /* Section buttons vertical */
+    .section-buttons { display:flex; flex-direction:column; gap:.6rem; align-items:center; margin-top:1.2rem; }
+
+    /* Panels (ocultos por defecto) */
+    .panel { max-width:900px; margin:1rem auto; background:rgba(255,255,255,0.04); border-radius:12px; padding:1.25rem; display:none; box-shadow:0 8px 30px rgba(0,0,0,.6); }
+    .panel.open { display:block; }
+
+    /* Toolbar edición (solo visible cuando desbloqueada) */
+    #editorToolbar { position:fixed; left:1rem; bottom:1rem; z-index:70; display:none; background:rgba(0,0,0,.6); padding:.6rem; border-radius:10px; }
+
+    /* Menú oculto discreto (inferior derecha) */
+    #hiddenMenu { position:fixed; right:1rem; bottom:1rem; z-index:80; }
+    #menuToggle {
+      width:34px; height:34px; border-radius:8px; border:0; background:rgba(255,255,255,0.02);
+      color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px;
+      opacity:.08; transition:opacity .18s, transform .12s;
+    }
+    #menuToggle:hover { opacity:.35; transform:translateY(-2px); }
+    #menuContent { display:none; position:absolute; right:0; bottom:44px; background:rgba(0,0,0,.75); border-radius:8px; padding:.4rem; min-width:140px; box-shadow:0 6px 18px rgba(0,0,0,.5); }
+    #hiddenMenu.open #menuContent { display:block; }
+
+    /* Ocultar guías cuando bloqueado: body.locked efectúa esto */
+    body.locked .editable { outline: none !important; }
+    body.locked .drag-handle { display: none !important; }
+    body.locked .resizable { resize: none !important; overflow:hidden !important; }
+
+    /* Focus editable */
+    [contenteditable]:focus { outline:2px dashed rgba(255,255,255,.18); }
+
+    /* Pequeños ajustes móviles */
+    @media (max-width:640px) {
+      .title-h1 { font-size:clamp(1.6rem, 7vw, 2.8rem); }
+      #editorToolbar { left: .5rem; bottom: .6rem; right: .5rem; }
+    }
+
+    /* Title specific styling */
+    #mainTitle.text-shadow-custom { text-shadow: 4px 2px 4px rgba(0,0,0,0.6); }
+
+    /* Subtitle font */
+    #servicesRow { font-family: 'Playfair Display', serif; }
+
+    .serviceBadge {
+        padding:.4rem .7rem;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+        border-radius:999px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        white-space:nowrap;
+    }
+
+    /* Tabs font: elegant alternative (Lora) */
+    .tab-title { font-family: 'Lora', serif; font-weight:700; letter-spacing:0.02em; }
+
+    /* WORK grid */
+    .work-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin-top:1rem; }
+    .work-item { background:rgba(255,255,255,0.03); padding:.6rem; border-radius:8px; cursor:pointer; }
+    .work-thumb { height:140px; object-fit:cover; width:100%; border-radius:6px; background:#111; display:block; }
+
+    .modal-overlay { position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:2rem; }
+    .modal-card { max-width:1200px; width:100%; border-radius:12px; overflow:hidden; background:#000; padding:1rem; }
+  </style>
+</head>
+<body class="locked">
+  <div id="bg-wrap" aria-hidden="true">
+    <video id="bgVideo" autoplay muted loop playsinline></video>
+    <div id="overlay" aria-hidden="true"></div>
+  </div>
+
+  <div id="app">
+    <section id="home" class="hero">
+      <div class="w-full max-w-4xl px-6">
+        <div id="titleBlock" class="editable resizable mx-auto text-center" style="max-width:900px; min-height: 200px;">
+          <div class="drag-handle">Mover Bloque</div>
+          <h1 id="mainTitle" class="title-h1 text-5xl sm:text-6xl text-shadow-custom" contenteditable="false" style="margin:0; font-family: 'Montserrat', sans-serif;">EGA FILMS</h1>
+          
+          <div id="titleImageContainer" class="editable resizable" style="position: absolute; top: 80px; left: 35%; width: 30%;">
+             <img id="titleImage" class="mx-auto hidden w-full h-full object-contain" alt="Logo / Imagen de título">
+          </div>
+
+          <div id="titleControls" class="mt-2 hidden">
+            <button id="addTitleImageBtn" class="px-3 py-1 bg-white/6 rounded text-sm">Añadir imagen</button>
+            <input id="titleImageInput" type="file" accept="image/*" class="hidden">
+            <button id="removeTitleImageBtn" class="px-3 py-1 bg-red-600/60 rounded text-sm ml-2">Quitar imagen</button>
+          </div>
+        </div>
+
+        <div id="servicesBlock" class="editable resizable mt-6 mx-auto" style="max-width:900px;">
+          <div class="drag-handle">Mover</div>
+          <div id="servicesRow" class="flex flex-wrap justify-center gap-3 items-center text-sm sm:text-base uppercase tracking-wider" contenteditable="false">
+            <div class="serviceBadge">VIDEOCLIPS</div>
+            <div class="serviceBadge">CORPORATE VIDEO</div>
+            <div class="serviceBadge">PODCAST</div>
+            <div class="serviceBadge">COMMERCIALS</div>
+            <div class="serviceBadge">STREAMING</div>
+            <div class="serviceBadge">GENERATIVE AI</div>
+          </div>
+        </div>
+
+        <div id="buttonsBlock" class="editable resizable mt-8 mx-auto text-center" style="max-width:320px;">
+          <div class="drag-handle">Mover</div>
+          <nav class="section-buttons">
+            <button data-target="workPanel" class="sectionBtn tab-title text-xl font-medium px-8 py-3 rounded-lg bg-white/6 hover:bg-white/10">WORK</button>
+            <button data-target="aboutPanel" class="sectionBtn tab-title text-xl font-medium px-8 py-3 rounded-lg bg-white/6 hover:bg-white/10">ABOUT</button>
+            <button data-target="contactPanel" class="sectionBtn tab-title text-xl font-medium px-8 py-3 rounded-lg bg-white/6 hover:bg-white/10">CONTACT</button>
+          </nav>
+        </div>
+      </div>
+    </section>
+
+    <main class="max-w-6xl mx-auto px-6 pb-12 space-y-6">
+      <section id="workPanel" class="panel" aria-hidden="true">
+        <h2 id="workHeading" contenteditable="false" class="text-2xl font-semibold tab-title">WORK</h2>
+        <div class="flex items-center gap-3 mt-3">
+          <button id="addVideoBtn" class="px-4 py-2 bg-white/10 rounded hidden">Añadir video</button>
+          <input id="videoInput" type="file" accept="video/*" class="hidden" multiple>
+        </div>
+        <div id="workContainer" class="work-grid mt-4"></div>
+      </section>
+
+      <section id="aboutPanel" class="panel" aria-hidden="true">
+        <h2 id="aboutHeading" contenteditable="true" class="text-2xl font-semibold tab-title">ABOUT</h2>
+        <p id="aboutText" contenteditable="true" class="text-sm text-white/80 mt-3">Escribe aquí tu texto sobre la productora...</p>
+      </section>
+
+      <section id="contactPanel" class="panel" aria-hidden="true">
+        <h2 id="contactHeading" contenteditable="true" class="text-2xl font-semibold tab-title">CONTACT</h2>
+        <p id="contactText" contenteditable="true" class="mt-3 text-white/80">Escríbenos: <strong id="emailField" contenteditable="true">tuemail@ejemplo.com</strong></p>
+      </section>
+    </main>
+
+    <footer class="text-center text-white/40 pb-8">© <span id="year"></span> EGA FILMS</footer>
+  </div>
+
+  <div id="hiddenMenu">
+    <button id="menuToggle" title="Opciones">⋮</button>
+    <div id="menuContent" aria-hidden="true">
+      <label id="bgInputLabel" class="block text-sm cursor-pointer text-white/80 px-2 py-1 rounded hover:bg-white/5" style="display: none;">Fondo
+        <input id="bgInput" type="file" accept="video/*" class="hidden">
+      </label>
+      <button id="resetBtn" class="hidden w-full text-left text-sm text-red-400/80 px-2 py-1 rounded hover:bg-white/5">Empezar de nuevo</button>
+      <button id="unlockBtn" class="block w-full text-left text-sm text-white/80 px-2 py-1 rounded hover:bg-white/5">Editar</button>
+    </div>
+  </div>
+
+  <div id="editorToolbar" class="hidden">
+    <div class="flex items-center gap-2">
+      <label class="text-xs">Tamaño <input id="fontSize" type="number" min="8" max="120" value="28" class="ml-1 w-16 text-black text-sm px-1 rounded"></label>
+      <label class="text-xs flex items-center gap-1">Color <input id="fontColor" type="color" value="#ffffff" class="ml-1 w-8 h-6 p-0 border-0"></label>
+      <label class="text-xs">Fuente
+        <select id="fontFamily" class="ml-1 text-sm">
+          <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto">Inter</option>
+          <option value="'Helvetica Neue', Arial, sans-serif">Helvetica</option>
+          <option value="'Times New Roman', Times, serif">Times</option>
+          <option value="'Courier New', Courier, monospace">Monospace</option>
+          <option value="'Montserrat', sans-serif">Montserrat</option>
+          <option value="'Playfair Display', serif">Playfair Display</option>
+        </select>
+      </label>
+      <button id="boldBtn" class="px-2 py-1 rounded bg-white/6 text-sm">B</button>
+      <button id="italicBtn" class="px-2 py-1 rounded bg-white/6 text-sm">I</button>
+      <button id="saveBtn" class="px-2 py-1 rounded bg-white/6 text-sm">Guardar</button>
+      <button id="lockNow" class="px-2 py-1 rounded bg-white/6 text-sm">Bloquear</button>
+    </div>
+    <div class="text-xs text-white/60 mt-2">Selecciona un bloque editable para aplicar estilos.</div>
+  </div>
+
+  <script>
+  /****************************************************************
+   EGA FILMS — V6 (Modificado)
+   - Botón "Añadir Imagen" funcional.
+   - Opción para resetear todos los cambios.
+   - Arrastre directo de la imagen sin necesidad de un botón "mover".
+  *****************************************************************/
+
+  (function(){
+    const PASSWORD = "EGAfilms2025!";
+    const LS_KEY = "ega_films_state_v6";
+    const IDB_NAME = "ega_films_db_v1";
+    const IDB_STORE = "files";
+    const FILE_KEYS = { bg: "bg_video", titleImage: "title_img" };
+
+    // DOM refs
+    const body = document.body;
+    const year = document.getElementById('year'); year.textContent = new Date().getFullYear();
+    const bgVideo = document.getElementById('bgVideo');
+    const overlay = document.getElementById('overlay');
+
+    const menuToggle = document.getElementById('menuToggle');
+    const hiddenMenu = document.getElementById('hiddenMenu');
+    const bgInput = document.getElementById('bgInput');
+    const bgInputLabel = document.getElementById('bgInputLabel');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const titleBlock = document.getElementById('titleBlock');
+    const mainTitle = document.getElementById('mainTitle');
+    const titleImageContainer = document.getElementById('titleImageContainer');
+    const titleImage = document.getElementById('titleImage');
+    const titleControls = document.getElementById('titleControls');
+    const addTitleImageBtn = document.getElementById('addTitleImageBtn');
+    const titleImageInput = document.getElementById('titleImageInput');
+    const removeTitleImageBtn = document.getElementById('removeTitleImageBtn');
+
+    const servicesBlock = document.getElementById('servicesBlock');
+    const servicesRow = document.getElementById('servicesRow');
+
+    const buttonsBlock = document.getElementById('buttonsBlock');
+    const sectionBtns = document.querySelectorAll('.sectionBtn');
+    const panels = {
+      work: document.getElementById('workPanel'),
+      about: document.getElementById('aboutPanel'),
+      contact: document.getElementById('contactPanel')
+    };
+
+    const editorToolbar = document.getElementById('editorToolbar');
+    const fontSizeInput = document.getElementById('fontSize');
+    const fontColorInput = document.getElementById('fontColor');
+    const fontFamilySelect = document.getElementById('fontFamily');
+    const boldBtn = document.getElementById('boldBtn');
+    const italicBtn = document.getElementById('italicBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const lockNowBtn = document.getElementById('lockNow');
+
+    const addVideoBtn = document.getElementById('addVideoBtn');
+    const videoInput = document.getElementById('videoInput');
+    const workContainer = document.getElementById('workContainer');
+
+    // State
+    let unlocked = false;
+    let selectedEl = null;
+    let saveTimer = null;
+    let dragging = null, dragOffset = {x:0,y:0};
+    let state = { videosMeta: [] };
+
+    // IndexedDB helpers
+    function openIDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE, { keyPath: "id" });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbPut(id, blobOrData) {
+      return openIDB().then(db => new Promise((res, rej) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put({ id: id, file: blobOrData });
+        tx.oncomplete = () => res(db.close());
+        tx.onerror = () => rej(tx.error);
+      }));
+    }
+
+    function idbGet(id) {
+      return openIDB().then(db => new Promise((res, rej) => {
+        const r = db.transaction(IDB_STORE).objectStore(IDB_STORE).get(id);
+        r.onsuccess = () => res(r.result ? r.result.file : null);
+        r.onerror = () => rej(r.error);
+      }));
+    }
+    
+    // CORRECCIÓN 2: Función para limpiar toda la base de datos de archivos
+    function clearIDB() {
+        return openIDB().then(db => new Promise((res, rej) => {
+            const tx = db.transaction(IDB_STORE, "readwrite");
+            tx.objectStore(IDB_STORE).clear();
+            tx.oncomplete = () => res(db.close());
+            tx.onerror = () => rej(tx.error);
+        }));
+    }
+
+    // UI: menu toggle
+    menuToggle.addEventListener('click', (e) => {
+      hiddenMenu.classList.toggle('open');
+      e.stopPropagation();
+    });
+    document.addEventListener('click', (e) => {
+      if (!hiddenMenu.contains(e.target)) hiddenMenu.classList.remove('open');
+    });
+
+    // Background input
+    bgInput.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      await idbPut(FILE_KEYS.bg, f);
+      bgVideo.src = URL.createObjectURL(f);
+    });
+
+    // CORRECCIÓN 1: El botón de añadir imagen ahora funciona correctamente
+    addTitleImageBtn.addEventListener('click', () => {
+        titleImageInput.click();
+    });
+
+    titleImageInput.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      await idbPut(FILE_KEYS.titleImage, f);
+      titleImage.src = URL.createObjectURL(f);
+      titleImage.classList.remove('hidden');
+      scheduleSave();
+    });
+
+    removeTitleImageBtn.addEventListener('click', async () => {
+      titleImage.src = "";
+      titleImage.classList.add('hidden');
+      const db = await openIDB();
+      db.transaction(IDB_STORE, "readwrite").objectStore(IDB_STORE).delete(FILE_KEYS.titleImage);
+      scheduleSave();
+    });
+
+    // Sections open/close
+    sectionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (target) target.classList.contains('open') ? closeAllPanels() : openPanel(target);
+      });
+    });
+    function closeAllPanels() {
+      Object.values(panels).forEach(p => p.classList.remove('open'));
+      overlay.classList.remove('dark');
+    }
+    function openPanel(panelEl) {
+      closeAllPanels();
+      panelEl.classList.add('open');
+      overlay.classList.add('dark');
+      setTimeout(() => panelEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
+    overlay.addEventListener('click', closeAllPanels);
+
+    // Dragging
+    function makeDraggable(el) {
+      // CORRECCIÓN 3: El "handle" puede ser el elemento entero o un .drag-handle
+      const handle = (el.id === 'titleImageContainer') ? el : el.querySelector('.drag-handle');
+      if (!handle) return;
+      handle.onpointerdown = (ev) => {
+        if (!unlocked) return;
+        ev.stopPropagation();
+        dragging = el;
+        const rect = el.getBoundingClientRect();
+        const parentRect = el.parentElement.getBoundingClientRect();
+        dragOffset.x = ev.clientX - rect.left;
+        dragOffset.y = ev.clientY - rect.top;
+        if (getComputedStyle(el).position !== "absolute") {
+            el.style.position = "absolute";
+            el.style.left = (rect.left - parentRect.left) + "px";
+            el.style.top = (rect.top - parentRect.top) + "px";
+        }
+        ev.preventDefault();
+      };
+    }
+    document.addEventListener('pointermove', (ev) => {
+      if (!dragging) return;
+      const parentRect = dragging.parentElement.getBoundingClientRect();
+      dragging.style.left = (ev.clientX - parentRect.left - dragOffset.x) + 'px';
+      dragging.style.top = (ev.clientY - parentRect.top - dragOffset.y) + 'px';
+    });
+    document.addEventListener('pointerup', () => {
+      if (dragging) scheduleSave();
+      dragging = null;
+    });
+    document.querySelectorAll('.editable').forEach(makeDraggable);
+
+    // ResizeObserver
+    const ro = new ResizeObserver(entries => {
+      if (!unlocked) return;
+      for (const entry of entries) {
+        const el = entry.target;
+        el.style.width = el.offsetWidth + "px";
+        el.style.height = el.offsetHeight + "px";
+        scheduleSave();
+      }
+    });
+    document.querySelectorAll('.resizable').forEach(el => ro.observe(el));
+
+    // Selection & Editor toolbar
+    function showEditorToolbar(show) { editorToolbar.style.display = show ? 'block' : 'none'; }
+    function selectElement(el) {
+        if (!unlocked) return;
+        if (selectedEl) selectedEl.classList.remove('selected-edit');
+        selectedEl = el ? (el.querySelector('[contenteditable="true"], h1, p') || el) : null;
+        if (!selectedEl) { showEditorToolbar(false); return; }
+        selectedEl.classList.add('selected-edit');
+        showEditorToolbar(true);
+        const cs = window.getComputedStyle(selectedEl);
+        fontSizeInput.value = parseInt(cs.fontSize) || 28;
+        fontColorInput.value = rgbToHex(cs.color) || "#ffffff";
+        fontFamilySelect.value = cs.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+    }
+    function rgbToHex(rgb) {
+      const m = (rgb||'').match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      return m ? "#" + [1,2,3].map(i => parseInt(m[i]).toString(16).padStart(2,'0')).join('') : "#ffffff";
+    }
+    document.addEventListener('click', (e) => {
+      if (unlocked && !editorToolbar.contains(e.target)) selectElement(e.target.closest('.editable'));
+    });
+
+    // Toolbar actions
+    fontSizeInput.addEventListener('input', () => { if (selectedEl) { selectedEl.style.fontSize = fontSizeInput.value + "px"; scheduleSave(); }});
+    fontColorInput.addEventListener('input', () => { if (selectedEl) { selectedEl.style.color = fontColorInput.value; scheduleSave(); }});
+    fontFamilySelect.addEventListener('change', () => { if (selectedEl) { selectedEl.style.fontFamily = fontFamilySelect.value; scheduleSave(); }});
+    boldBtn.addEventListener('click', () => { if (selectedEl) { document.execCommand('bold'); scheduleSave(); }});
+    italicBtn.addEventListener('click', () => { if (selectedEl) { document.execCommand('italic'); scheduleSave(); }});
+    saveBtn.addEventListener('click', () => {
+      saveStateImmediate();
+      saveBtn.textContent = "Guardado";
+      setTimeout(()=> saveBtn.textContent = "Guardar", 900);
+    });
+    lockNowBtn.addEventListener('click', lockEditing);
+
+    // Unlock / Lock / Reset
+    unlockBtn.addEventListener('click', () => {
+      if (!unlocked) {
+        const p = prompt("Introduce la contraseña de edición:");
+        if (p === PASSWORD) unlockEditing();
+        else if (p) alert("Contraseña incorrecta.");
+      } else {
+        lockEditing();
+      }
+    });
+
+    resetBtn.addEventListener('click', async () => {
+        if (confirm('¿Estás seguro? Se borrarán todos los cambios (textos, posiciones, imágenes y vídeos) y se restaurará la versión por defecto. Esta acción no se puede deshacer.')) {
+            await clearIDB();
+            localStorage.removeItem(LS_KEY);
+            location.reload();
+        }
+    });
+
+    function unlockEditing() {
+      unlocked = true;
+      body.classList.remove('locked');
+      document.querySelectorAll('.editable').forEach(el => {
+        el.classList.add('editing');
+        const content = el.querySelector('[contenteditable], h1, p, strong');
+        if(content) content.setAttribute('contenteditable','true');
+      });
+      titleControls.classList.remove('hidden');
+      showEditorToolbar(true);
+      unlockBtn.textContent = "Bloquear";
+      bgInputLabel.style.display = 'block';
+      resetBtn.classList.remove('hidden');
+      addVideoBtn.classList.remove('hidden');
+    }
+
+    function lockEditing() {
+      unlocked = false;
+      body.classList.add('locked');
+      document.querySelectorAll('.editable').forEach(el => {
+        el.classList.remove('editing');
+        const content = el.querySelector('[contenteditable], h1, p, strong');
+        if(content) content.setAttribute('contenteditable','false');
+      });
+      titleControls.classList.add('hidden');
+      showEditorToolbar(false);
+      unlockBtn.textContent = "Editar";
+      bgInputLabel.style.display = 'none';
+      resetBtn.classList.add('hidden');
+      addVideoBtn.classList.add('hidden');
+      if(selectedEl) selectedEl.classList.remove('selected-edit');
+      selectedEl = null;
+      saveStateImmediate();
+    }
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAllPanels(); selectElement(null); } });
+
+    // Work: upload videos logic (remains functional)
+    function generateId(){ return 'vid_' + Math.random().toString(36).substr(2,9); }
+    addVideoBtn.addEventListener('click', () => videoInput.click());
+    videoInput.addEventListener('change', async (evt) => {
+        for(const file of Array.from(videoInput.files || [])){
+            const id = generateId(), key = 'video_' + id;
+            await idbPut(key, file);
+            state.videosMeta.push({ id, fileKey: key, type: file.type, title: 'Untitled', synopsis: '' });
+            renderWorkItem(state.videosMeta.at(-1));
+        }
+        videoInput.value = '';
+        scheduleSave();
+    });
+    async function renderWorkItem(vidObj){
+      const div = document.createElement('div');
+      div.className = 'work-item';
+      const blob = await idbGet(vidObj.fileKey);
+      if (!blob) return;
+      div.innerHTML = `
+        <video class="work-thumb" muted preload="metadata" playsinline src="${URL.createObjectURL(blob)}"></video>
+        <h3 class="mt-2 text-lg font-semibold" contenteditable="${unlocked}">${escapeHtml(vidObj.title)}</h3>
+        <p class="text-sm text-white/70" contenteditable="${unlocked}">${escapeHtml(vidObj.synopsis)}</p>`;
+      div.addEventListener('click', e => {
+        if(e.target.isContentEditable) return;
+        openVideoModal(URL.createObjectURL(blob), vidObj.title, vidObj.synopsis, vidObj.type);
+      });
+      div.querySelectorAll('[contenteditable]').forEach(el => el.addEventListener('input', () => {
+          vidObj.title = div.querySelector('h3').innerText;
+          vidObj.synopsis = div.querySelector('p').innerText;
+          scheduleSave();
+      }));
+      workContainer.appendChild(div);
+    }
+    function openVideoModal(url, title, synopsis, type){
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'modalOverlay';
+      modal.innerHTML = `
+        <div class="modal-card">
+          <div class="flex justify-between items-center mb-2">
+            <div><h3 class="text-xl font-semibold">${escapeHtml(title)}</h3><p class="text-sm text-white/70">${escapeHtml(synopsis)}</p></div>
+            <button id="closeModal" class="px-3 py-1 rounded bg-white/6">Cerrar</button>
+          </div>
+          <video controls autoplay class="w-full" style="max-height:70vh; background:#000;"><source src="${url}" type="${type || 'video/mp4'}"></video>
+        </div>`;
+      document.body.appendChild(modal);
+      document.getElementById('closeModal').addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
+    }
+    function closeModal(){ document.getElementById('modalOverlay')?.remove(); if(!document.querySelector('.panel.open')) overlay.classList.remove('dark'); }
+    function escapeHtml(s=''){ return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // State persistence
+    function collectState() {
+      const editables = {};
+      document.querySelectorAll('[contenteditable][id]').forEach(el => {
+          editables[el.id] = { html: el.innerHTML, style: el.getAttribute('style') || '' };
+      });
+      return {
+        editables,
+        servicesHTML: servicesRow.innerHTML,
+        blockStyles: {
+          titleBlock: titleBlock.getAttribute('style') || '',
+          titleImageContainer: titleImageContainer.getAttribute('style') || '',
+          servicesBlock: servicesBlock.getAttribute('style') || '',
+          buttonsBlock: buttonsBlock.getAttribute('style') || ''
+        },
+        videosMeta: state.videosMeta || [],
+      };
+    }
+
+    function saveStateImmediate() {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(collectState())); }
+      catch(e) { console.warn("No se pudo guardar en localStorage:", e); }
+    }
+
+    function scheduleSave(delay = 800) {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveStateImmediate, delay);
+    }
+
+    async function loadState() {
+      const raw = localStorage.getItem(LS_KEY);
+      if(raw) {
+        try {
+          const st = JSON.parse(raw);
+          if(st.editables) {
+            for(const id in st.editables){
+              const el = document.getElementById(id);
+              if(el){
+                el.innerHTML = st.editables[id].html;
+                if(st.editables[id].style) el.setAttribute('style', st.editables[id].style);
+              }
+            }
+          }
+          if (st.blockStyles) {
+              if (st.blockStyles.titleBlock) titleBlock.setAttribute('style', st.blockStyles.titleBlock);
+              if (st.blockStyles.titleImageContainer) titleImageContainer.setAttribute('style', st.blockStyles.titleImageContainer);
+              if (st.blockStyles.servicesBlock) servicesBlock.setAttribute('style', st.blockStyles.servicesBlock);
+              if (st.blockStyles.buttonsBlock) buttonsBlock.setAttribute('style', st.blockStyles.buttonsBlock);
+          }
+          if(st.servicesHTML) servicesRow.innerHTML = st.servicesHTML;
+          if(Array.isArray(st.videosMeta)) state.videosMeta = st.videosMeta;
+        } catch(e){ console.warn("No se pudo cargar localStorage:", e); }
+      }
+
+      const bgBlob = await idbGet(FILE_KEYS.bg).catch(()=>{});
+      if(bgBlob) bgVideo.src = URL.createObjectURL(bgBlob);
+      const tBlob = await idbGet(FILE_KEYS.titleImage).catch(()=>{});
+      if(tBlob) {
+          titleImage.src = URL.createObjectURL(tBlob);
+          titleImage.classList.remove('hidden');
+      }
+
+      workContainer.innerHTML = '';
+      if(state.videosMeta) {
+          for(const m of state.videosMeta) renderWorkItem(m);
+      }
+    }
+
+    document.addEventListener('input', (e) => { if(e.target.isContentEditable) scheduleSave(); });
+    window.addEventListener('beforeunload', saveStateImmediate);
+
+    loadState();
+  })();
+  </script>
+</body>
+</html>
