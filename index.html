@@ -3,13 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EGA FILMS — Portfolio</title>
+  <title>EGA FILMS</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Playfair+Display:wght@400;700&family=Lora:wght@700&display=swap" rel="stylesheet">
 
   <style>
+    /* Importación de la fuente Glacial Indifference */
+    @import url('https://stijndv.com/fonts/glacial-indifference/glacial-indifference.css');
+
     /* Base */
     html,body,#app { height:100%; }
     body { margin:0; background:#000; color:#fff; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
@@ -24,7 +27,7 @@
     #app { position:relative; z-index:2; }
 
     /* Hero / Interfaz principal */
-    .hero { min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:2rem; }
+    .hero { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem; }
     .title-h1 { font-weight:800; letter-spacing:-0.02em; font-family: 'Montserrat', sans-serif; }
 
     /* Editable blocks visuals (only visible in edit mode) */
@@ -32,9 +35,7 @@
     .editable.editing { outline: 1px dashed rgba(255,255,255,.14); }
     .drag-handle { display:none; position:absolute; right:8px; top:8px; z-index:60; background:rgba(0,0,0,.55); color:#fff; font-size:12px; padding:4px 6px; border-radius:6px; cursor:move; }
     .editable.editing .drag-handle { display:block; }
-    /* CORRECCIÓN 3: Cursor para arrastrar la imagen directamente */
     .editable.editing #titleImageContainer { cursor: move; }
-
 
     /* Resizable: by default no scroll (locked), when editing allow overflow for resizing */
     .resizable { resize: both; overflow: hidden; min-width:120px; min-height:40px; }
@@ -64,73 +65,156 @@
     /* Ocultar guías cuando bloqueado: body.locked efectúa esto */
     body.locked .editable { outline: none !important; }
     body.locked .drag-handle { display: none !important; }
-    body.locked .resizable { resize: none !important; overflow:hidden !important; }
+    body.locked .resizable { resize: none !important; overflow:visible !important; }
 
     /* Focus editable */
     [contenteditable]:focus { outline:2px dashed rgba(255,255,255,.18); }
 
-    /* Pequeños ajustes móviles */
-    @media (max-width:640px) {
-      .title-h1 { font-size:clamp(1.6rem, 7vw, 2.8rem); }
-      #editorToolbar { left: .5rem; bottom: .6rem; right: .5rem; }
-    }
-
     /* Title specific styling */
     #mainTitle.text-shadow-custom { text-shadow: 4px 2px 4px rgba(0,0,0,0.6); }
 
-    /* Subtitle font */
-    #servicesRow { font-family: 'Playfair Display', serif; }
-
+    /* Subtitle font & container */
+    #servicesRow {
+        font-family: 'Playfair Display', serif;
+        /* Asegura que la fila no se rompa en pantallas de PC */
+        white-space: nowrap;
+        overflow-x: auto; /* Permite scroll horizontal si fuera necesario */
+    }
     .serviceBadge {
         padding:.4rem .7rem;
         text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
         border-radius:999px;
-        display:inline-flex;
+        display:inline-block; /* Cambiado para que white-space funcione */
         align-items:center;
         justify-content:center;
-        white-space:nowrap;
     }
+    /* Ocultar barra de scroll en servicios */
+    #servicesRow::-webkit-scrollbar { display: none; }
+    #servicesRow { -ms-overflow-style: none; scrollbar-width: none; }
+
 
     /* Tabs font: elegant alternative (Lora) */
     .tab-title { font-family: 'Lora', serif; font-weight:700; letter-spacing:0.02em; }
 
     /* WORK grid */
     .work-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin-top:1rem; }
-    .work-item { background:rgba(255,255,255,0.03); padding:.6rem; border-radius:8px; cursor:pointer; }
+    .work-item { background:rgba(255,255,255,0.03); padding:.6rem; border-radius:8px; cursor:pointer; transition: background .2s; }
+    .work-item:hover { background:rgba(255,255,255,0.07); }
     .work-thumb { height:140px; object-fit:cover; width:100%; border-radius:6px; background:#111; display:block; }
+    
+    .work-title {
+        font-family: 'Glacial Indifference', sans-serif;
+        font-size: 13px;
+        font-weight: bold;
+        color: #FFFFFF;
+        margin-top: 0.5rem;
+        letter-spacing: 0.02em;
+    }
 
-    .modal-overlay { position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:2rem; }
+    .modal-overlay { position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:1rem; }
     .modal-card { max-width:1200px; width:100%; border-radius:12px; overflow:hidden; background:#000; padding:1rem; }
+
+    /* --- FIX cross-browser para título y subtítulos --- */
+    #titleBlock {
+      position: relative;
+      z-index: 2;
+      margin-bottom: 1.5rem; /* espacio fijo debajo del título */
+      text-align: center;
+    }
+
+    #mainTitle {
+      display: block;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    #servicesBlock {
+      position: relative;
+      z-index: 2;
+      margin-top: 1rem; /* asegura que no se pegue al título */
+      text-align: center;
+    }
+     /* --- Ajustes visuales: subir y agrandar logo + título --- */
+    #titleBlock {
+      position: relative;
+      z-index: 3;
+      transform: translateY(-6vh);
+      transition: transform .18s ease;
+      max-width: 100%;
+      margin-bottom: 0.4rem;
+    }
+
+    /* Logo: hazlo más grande y responsive */
+    #titleBlock img {
+      height: calc(11rem + 14vw); /* base + escala con la ventana */
+      max-height: 22vh;
+      width: auto;
+      display: block;
+      margin: 0 auto 0.5rem;
+    }
+
+    /* Título: tamaño responsive */
+    #mainTitle {
+      font-size: calc(1.8rem + 2.6vw);
+      line-height: 1;
+      margin: 0;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+
+    /* =============================================================== */
+    /* === CORRECCIONES PARA DISPOSITIVOS MÓVILES === */
+    /* =============================================================== */
+    @media (max-width: 640px) {
+      .title-h1 { font-size:clamp(1.6rem, 7vw, 2.8rem); }
+
+      #titleBlock { transform: translateY(-3vh); }
+      
+      #titleBlock img {
+          height: clamp(5rem, 20vw, 120px);
+          margin-bottom: 1rem;
+      }
+      
+      #mainTitle { font-size: clamp(1.6rem, 9vw, 2.6rem); }
+
+      #servicesRow {
+          white-space: normal;
+          flex-wrap: wrap;
+          justify-content: center;
+      }
+      
+      /* **NUEVA CORRECCIÓN: Reducir letra en ABOUT y CONTACT para móviles** */
+      #aboutText, #contactText {
+          font-size: 16px !important; /* Usamos !important para asegurar que sobreescriba el estilo en línea */
+      }
+      
+      #editorToolbar { left: .5rem; bottom: .6rem; right: .5rem; }
+    }
   </style>
 </head>
 <body class="locked">
   <div id="bg-wrap" aria-hidden="true">
-    <video id="bgVideo" autoplay muted loop playsinline></video>
+    <video id="bgVideo" autoplay muted loop playsinline>
+        <source src="https://res.cloudinary.com/dlc1uhcc5/video/upload/v1759398058/ShowReelGITHUB_tepwzf.mp4" type="video/mp4">
+    </video>
     <div id="overlay" aria-hidden="true"></div>
   </div>
 
   <div id="app">
     <section id="home" class="hero">
       <div class="w-full max-w-4xl px-6">
-        <div id="titleBlock" class="editable resizable mx-auto text-center" style="max-width:900px; min-height: 200px;">
+        <div id="titleBlock" class="editable resizable mx-auto text-center" style="max-width:900px;">
           <div class="drag-handle">Mover Bloque</div>
-          <h1 id="mainTitle" class="title-h1 text-5xl sm:text-6xl text-shadow-custom" contenteditable="false" style="margin:0; font-family: 'Montserrat', sans-serif;">EGA FILMS</h1>
           
-          <div id="titleImageContainer" class="editable resizable" style="position: absolute; top: 80px; left: 35%; width: 30%;">
-             <img id="titleImage" class="mx-auto hidden w-full h-full object-contain" alt="Logo / Imagen de título">
-          </div>
-
-          <div id="titleControls" class="mt-2 hidden">
-            <button id="addTitleImageBtn" class="px-3 py-1 bg-white/6 rounded text-sm">Añadir imagen</button>
-            <input id="titleImageInput" type="file" accept="image/*" class="hidden">
-            <button id="removeTitleImageBtn" class="px-3 py-1 bg-red-600/60 rounded text-sm ml-2">Quitar imagen</button>
-          </div>
+          <img src="https://github.com/EGAFILMS/egafilms/raw/main/ARCHIVOS_WEB/LOGO_TITULO/EGA_SoloLogoTransBlanco.png" alt="EGA FILMS Logo" class="mx-auto h-40 sm:h-48 md:h-56 mb-4">
+          
+          <h1 id="mainTitle" class="title-h1 text-5xl sm:text-6xl text-shadow-custom" contenteditable="false" style="margin:0; font-family: 'Montserrat', sans-serif;">EGA FILMS</h1>
         </div>
 
-        <div id="servicesBlock" class="editable resizable mt-6 mx-auto" style="max-width:900px;">
+        <div id="servicesBlock" class="editable resizable mt-8 mx-auto w-full" style="max-width:960px;">
           <div class="drag-handle">Mover</div>
-          <div id="servicesRow" class="flex flex-wrap justify-center gap-3 items-center text-sm sm:text-base uppercase tracking-wider" contenteditable="false">
-            <div class="serviceBadge">VIDEOCLIPS</div>
+          <div id="servicesRow" class="flex justify-center gap-3 items-center text-sm sm:text-base uppercase tracking-wider">
+            <div class="serviceBadge"> VIDEOCLIPS</div>
             <div class="serviceBadge">CORPORATE VIDEO</div>
             <div class="serviceBadge">PODCAST</div>
             <div class="serviceBadge">COMMERCIALS</div>
@@ -155,19 +239,26 @@
         <h2 id="workHeading" contenteditable="false" class="text-2xl font-semibold tab-title">WORK</h2>
         <div class="flex items-center gap-3 mt-3">
           <button id="addVideoBtn" class="px-4 py-2 bg-white/10 rounded hidden">Añadir video</button>
-          <input id="videoInput" type="file" accept="video/*" class="hidden" multiple>
         </div>
         <div id="workContainer" class="work-grid mt-4"></div>
       </section>
 
       <section id="aboutPanel" class="panel" aria-hidden="true">
         <h2 id="aboutHeading" contenteditable="true" class="text-2xl font-semibold tab-title">ABOUT</h2>
-        <p id="aboutText" contenteditable="true" class="text-sm text-white/80 mt-3">Escribe aquí tu texto sobre la productora...</p>
+        <p id="aboutText" contenteditable="true" class="text-white/80 mt-3" style="font-family: 'Glacial Indifference', sans-serif; font-size: 25px; font-weight: bold; color: #FFFFFF; white-space: pre-wrap;">At EGA Films, we create and produce high-quality audiovisual content for brands, artists, and businesses. Our mission is to tell each story with maximum visual and emotional impact, delivering results that truly connect with audiences.
+We are a full-service production company covering the entire audiovisual spectrum, always adapting to the unique needs of every project. From music videos, corporate films, and advertising spots to podcasts, interviews, live streaming, and fully AI-generated animations — we handle it all.
+Audiovisual storytelling is our craft, and we master every format to provide a complete and safe service.
+
+______________________________________________________________________________________________
+
+En EGA Films creamos y producimos contenidos audiovisuales de alta calidad para marcas, artistas y empresas. Nuestro objetivo es contar cada historia con la máxima fuerza visual y emocional, generando impacto real en la audiencia.
+Somos una productora integral que cubre todo el espectro audiovisual y se adapta a las necesidades de cada proyecto. Realizamos videoclips, videos corporativos, spots publicitarios, podcasts, entrevistas, transmisiones en directo (streaming) y animaciones generadas íntegramente con inteligencia artificial.
+El lenguaje audiovisual es nuestra especialidad, y dominamos todos los formatos para ofrecer un servicio completo y de confianza.</p>
       </section>
 
       <section id="contactPanel" class="panel" aria-hidden="true">
         <h2 id="contactHeading" contenteditable="true" class="text-2xl font-semibold tab-title">CONTACT</h2>
-        <p id="contactText" contenteditable="true" class="mt-3 text-white/80">Escríbenos: <strong id="emailField" contenteditable="true">tuemail@ejemplo.com</strong></p>
+        <p id="contactText" contenteditable="true" class="mt-3 text-white/80" style="font-family: 'Glacial Indifference', sans-serif; font-size: 25px; color: #FFFFFF;">If you have a project in mind, or even just an idea you'd like to explore, feel free to get in touch / Si tienes un proyecto que quieras realizar, o simplemente una idea que quieres desarrollar, no dudes en escribirnos: <strong id="emailField" contenteditable="true" style="font-weight: bold;">egafilmsproduce@gmail.com</strong></p>
       </section>
     </main>
 
@@ -209,18 +300,19 @@
 
   <script>
   /****************************************************************
-   EGA FILMS — V6 (Modificado)
-   - Botón "Añadir Imagen" funcional.
-   - Opción para resetear todos los cambios.
-   - Arrastre directo de la imagen sin necesidad de un botón "mover".
+   EGA FILMS — V9 (Corregido)
+   - Logo estático añadido.
+   - Fila de servicios en una sola línea.
+   - Video de fondo por defecto actualizado.
+   - Sección WORK precargada con videos y títulos.
   *****************************************************************/
 
   (function(){
     const PASSWORD = "EGAfilms2025!";
-    const LS_KEY = "ega_films_state_v6";
+    const LS_KEY = "ega_films_state_v9";
     const IDB_NAME = "ega_films_db_v1";
     const IDB_STORE = "files";
-    const FILE_KEYS = { bg: "bg_video", titleImage: "title_img" };
+    const FILE_KEYS = { bg: "bg_video" };
 
     // DOM refs
     const body = document.body;
@@ -236,18 +328,10 @@
     const resetBtn = document.getElementById('resetBtn');
 
     const titleBlock = document.getElementById('titleBlock');
-    const mainTitle = document.getElementById('mainTitle');
-    const titleImageContainer = document.getElementById('titleImageContainer');
-    const titleImage = document.getElementById('titleImage');
-    const titleControls = document.getElementById('titleControls');
-    const addTitleImageBtn = document.getElementById('addTitleImageBtn');
-    const titleImageInput = document.getElementById('titleImageInput');
-    const removeTitleImageBtn = document.getElementById('removeTitleImageBtn');
-
     const servicesBlock = document.getElementById('servicesBlock');
     const servicesRow = document.getElementById('servicesRow');
-
     const buttonsBlock = document.getElementById('buttonsBlock');
+    
     const sectionBtns = document.querySelectorAll('.sectionBtn');
     const panels = {
       work: document.getElementById('workPanel'),
@@ -265,16 +349,37 @@
     const lockNowBtn = document.getElementById('lockNow');
 
     const addVideoBtn = document.getElementById('addVideoBtn');
-    const videoInput = document.getElementById('videoInput');
     const workContainer = document.getElementById('workContainer');
+
+    const initialWorkItems = [
+        {
+            url: "https://res.cloudinary.com/dlc1uhcc5/video/upload/v1759398077/Tranquilo_videoclip_eotjcp.mp4",
+            title: "Tranquilo - La Cuerda Floja (Videoclip)",
+            type: "video/mp4"
+        },
+        {
+            url: "https://res.cloudinary.com/dlc1uhcc5/video/upload/v1759398080/EzekiaGITHUB_oumzml.mp4",
+            title: "Ezekia (Corporate Video)",
+            type: "video/mp4"
+        },
+        {
+            url: "https://res.cloudinary.com/dlc1uhcc5/video/upload/v1759398076/Tempos_demo_PODCAST_iifyes.mp4",
+            title: "Tempos Demo (Podcast)",
+            type: "video/mp4"
+        },
+        {
+            url: "https://res.cloudinary.com/dlc1uhcc5/video/upload/v1759398284/BeautyDemo_je5go3.mp4",
+            title: "Beauty Demo",
+            type: "video/mp4"
+        }
+    ];
 
     // State
     let unlocked = false;
     let selectedEl = null;
     let saveTimer = null;
     let dragging = null, dragOffset = {x:0,y:0};
-    let state = { videosMeta: [] };
-
+    
     // IndexedDB helpers
     function openIDB() {
       return new Promise((resolve, reject) => {
@@ -302,7 +407,6 @@
       }));
     }
     
-    // CORRECCIÓN 2: Función para limpiar toda la base de datos de archivos
     function clearIDB() {
         return openIDB().then(db => new Promise((res, rej) => {
             const tx = db.transaction(IDB_STORE, "readwrite");
@@ -326,29 +430,10 @@
       const f = e.target.files?.[0];
       if (!f) return;
       await idbPut(FILE_KEYS.bg, f);
+      const source = bgVideo.querySelector('source');
+      if (source) source.remove(); // Remove default source
       bgVideo.src = URL.createObjectURL(f);
-    });
-
-    // CORRECCIÓN 1: El botón de añadir imagen ahora funciona correctamente
-    addTitleImageBtn.addEventListener('click', () => {
-        titleImageInput.click();
-    });
-
-    titleImageInput.addEventListener('change', async (e) => {
-      const f = e.target.files?.[0];
-      if (!f) return;
-      await idbPut(FILE_KEYS.titleImage, f);
-      titleImage.src = URL.createObjectURL(f);
-      titleImage.classList.remove('hidden');
-      scheduleSave();
-    });
-
-    removeTitleImageBtn.addEventListener('click', async () => {
-      titleImage.src = "";
-      titleImage.classList.add('hidden');
-      const db = await openIDB();
-      db.transaction(IDB_STORE, "readwrite").objectStore(IDB_STORE).delete(FILE_KEYS.titleImage);
-      scheduleSave();
+      bgVideo.load();
     });
 
     // Sections open/close
@@ -372,21 +457,19 @@
 
     // Dragging
     function makeDraggable(el) {
-      // CORRECCIÓN 3: El "handle" puede ser el elemento entero o un .drag-handle
-      const handle = (el.id === 'titleImageContainer') ? el : el.querySelector('.drag-handle');
+      const handle = el.querySelector('.drag-handle');
       if (!handle) return;
       handle.onpointerdown = (ev) => {
         if (!unlocked) return;
         ev.stopPropagation();
         dragging = el;
         const rect = el.getBoundingClientRect();
-        const parentRect = el.parentElement.getBoundingClientRect();
         dragOffset.x = ev.clientX - rect.left;
         dragOffset.y = ev.clientY - rect.top;
         if (getComputedStyle(el).position !== "absolute") {
             el.style.position = "absolute";
-            el.style.left = (rect.left - parentRect.left) + "px";
-            el.style.top = (rect.top - parentRect.top) + "px";
+            el.style.left = rect.left + "px";
+            el.style.top = rect.top + "px";
         }
         ev.preventDefault();
       };
@@ -420,7 +503,7 @@
     function selectElement(el) {
         if (!unlocked) return;
         if (selectedEl) selectedEl.classList.remove('selected-edit');
-        selectedEl = el ? (el.querySelector('[contenteditable="true"], h1, p') || el) : null;
+        selectedEl = el ? (el.querySelector('[contenteditable="true"], h1, p, strong') || el) : null;
         if (!selectedEl) { showEditorToolbar(false); return; }
         selectedEl.classList.add('selected-edit');
         showEditorToolbar(true);
@@ -462,7 +545,7 @@
     });
 
     resetBtn.addEventListener('click', async () => {
-        if (confirm('¿Estás seguro? Se borrarán todos los cambios (textos, posiciones, imágenes y vídeos) y se restaurará la versión por defecto. Esta acción no se puede deshacer.')) {
+        if (confirm('¿Estás seguro? Se borrarán todos los cambios y se restaurará la versión por defecto. Esta acción no se puede deshacer.')) {
             await clearIDB();
             localStorage.removeItem(LS_KEY);
             location.reload();
@@ -472,33 +555,23 @@
     function unlockEditing() {
       unlocked = true;
       body.classList.remove('locked');
-      document.querySelectorAll('.editable').forEach(el => {
-        el.classList.add('editing');
-        const content = el.querySelector('[contenteditable], h1, p, strong');
-        if(content) content.setAttribute('contenteditable','true');
-      });
-      titleControls.classList.remove('hidden');
+      document.querySelectorAll('.editable').forEach(el => el.classList.add('editing'));
+      document.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'true'));
       showEditorToolbar(true);
       unlockBtn.textContent = "Bloquear";
       bgInputLabel.style.display = 'block';
       resetBtn.classList.remove('hidden');
-      addVideoBtn.classList.remove('hidden');
     }
 
     function lockEditing() {
       unlocked = false;
       body.classList.add('locked');
-      document.querySelectorAll('.editable').forEach(el => {
-        el.classList.remove('editing');
-        const content = el.querySelector('[contenteditable], h1, p, strong');
-        if(content) content.setAttribute('contenteditable','false');
-      });
-      titleControls.classList.add('hidden');
+      document.querySelectorAll('.editable').forEach(el => el.classList.remove('editing'));
+      document.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
       showEditorToolbar(false);
       unlockBtn.textContent = "Editar";
       bgInputLabel.style.display = 'none';
       resetBtn.classList.add('hidden');
-      addVideoBtn.classList.add('hidden');
       if(selectedEl) selectedEl.classList.remove('selected-edit');
       selectedEl = null;
       saveStateImmediate();
@@ -506,50 +579,36 @@
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAllPanels(); selectElement(null); } });
 
-    // Work: upload videos logic (remains functional)
-    function generateId(){ return 'vid_' + Math.random().toString(36).substr(2,9); }
-    addVideoBtn.addEventListener('click', () => videoInput.click());
-    videoInput.addEventListener('change', async (evt) => {
-        for(const file of Array.from(videoInput.files || [])){
-            const id = generateId(), key = 'video_' + id;
-            await idbPut(key, file);
-            state.videosMeta.push({ id, fileKey: key, type: file.type, title: 'Untitled', synopsis: '' });
-            renderWorkItem(state.videosMeta.at(-1));
-        }
-        videoInput.value = '';
-        scheduleSave();
-    });
-    async function renderWorkItem(vidObj){
-      const div = document.createElement('div');
-      div.className = 'work-item';
-      const blob = await idbGet(vidObj.fileKey);
-      if (!blob) return;
-      div.innerHTML = `
-        <video class="work-thumb" muted preload="metadata" playsinline src="${URL.createObjectURL(blob)}"></video>
-        <h3 class="mt-2 text-lg font-semibold" contenteditable="${unlocked}">${escapeHtml(vidObj.title)}</h3>
-        <p class="text-sm text-white/70" contenteditable="${unlocked}">${escapeHtml(vidObj.synopsis)}</p>`;
-      div.addEventListener('click', e => {
-        if(e.target.isContentEditable) return;
-        openVideoModal(URL.createObjectURL(blob), vidObj.title, vidObj.synopsis, vidObj.type);
-      });
-      div.querySelectorAll('[contenteditable]').forEach(el => el.addEventListener('input', () => {
-          vidObj.title = div.querySelector('h3').innerText;
-          vidObj.synopsis = div.querySelector('p').innerText;
-          scheduleSave();
-      }));
-      workContainer.appendChild(div);
+    // Work: render initial videos
+    function renderInitialWork() {
+        workContainer.innerHTML = '';
+        initialWorkItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'work-item';
+            div.innerHTML = `
+                <video class="work-thumb" muted loop preload="metadata" playsinline src="${item.url}"></video>
+                <h3 class="work-title">${escapeHtml(item.title)}</h3>`;
+            div.addEventListener('click', () => openVideoModal(item.url, item.title, item.type));
+            
+            const thumb = div.querySelector('.work-thumb');
+            div.addEventListener('mouseenter', () => thumb.play());
+            div.addEventListener('mouseleave', () => { thumb.pause(); thumb.currentTime = 0; });
+
+            workContainer.appendChild(div);
+        });
     }
-    function openVideoModal(url, title, synopsis, type){
+
+    function openVideoModal(url, title, type){
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.id = 'modalOverlay';
       modal.innerHTML = `
         <div class="modal-card">
           <div class="flex justify-between items-center mb-2">
-            <div><h3 class="text-xl font-semibold">${escapeHtml(title)}</h3><p class="text-sm text-white/70">${escapeHtml(synopsis)}</p></div>
+            <h3 class="text-xl font-semibold">${escapeHtml(title)}</h3>
             <button id="closeModal" class="px-3 py-1 rounded bg-white/6">Cerrar</button>
           </div>
-          <video controls autoplay class="w-full" style="max-height:70vh; background:#000;"><source src="${url}" type="${type || 'video/mp4'}"></video>
+          <video controls autoplay class="w-full" style="max-height:80vh; background:#000;"><source src="${url}" type="${type || 'video/mp4'}"></video>
         </div>`;
       document.body.appendChild(modal);
       document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -569,11 +628,9 @@
         servicesHTML: servicesRow.innerHTML,
         blockStyles: {
           titleBlock: titleBlock.getAttribute('style') || '',
-          titleImageContainer: titleImageContainer.getAttribute('style') || '',
           servicesBlock: servicesBlock.getAttribute('style') || '',
           buttonsBlock: buttonsBlock.getAttribute('style') || ''
-        },
-        videosMeta: state.videosMeta || [],
+        }
       };
     }
 
@@ -603,27 +660,22 @@
           }
           if (st.blockStyles) {
               if (st.blockStyles.titleBlock) titleBlock.setAttribute('style', st.blockStyles.titleBlock);
-              if (st.blockStyles.titleImageContainer) titleImageContainer.setAttribute('style', st.blockStyles.titleImageContainer);
               if (st.blockStyles.servicesBlock) servicesBlock.setAttribute('style', st.blockStyles.servicesBlock);
               if (st.blockStyles.buttonsBlock) buttonsBlock.setAttribute('style', st.blockStyles.buttonsBlock);
           }
           if(st.servicesHTML) servicesRow.innerHTML = st.servicesHTML;
-          if(Array.isArray(st.videosMeta)) state.videosMeta = st.videosMeta;
         } catch(e){ console.warn("No se pudo cargar localStorage:", e); }
       }
 
       const bgBlob = await idbGet(FILE_KEYS.bg).catch(()=>{});
-      if(bgBlob) bgVideo.src = URL.createObjectURL(bgBlob);
-      const tBlob = await idbGet(FILE_KEYS.titleImage).catch(()=>{});
-      if(tBlob) {
-          titleImage.src = URL.createObjectURL(tBlob);
-          titleImage.classList.remove('hidden');
+      if(bgBlob) {
+          const source = bgVideo.querySelector('source');
+          if (source) source.remove();
+          bgVideo.src = URL.createObjectURL(bgBlob);
+          bgVideo.load();
       }
-
-      workContainer.innerHTML = '';
-      if(state.videosMeta) {
-          for(const m of state.videosMeta) renderWorkItem(m);
-      }
+      
+      renderInitialWork();
     }
 
     document.addEventListener('input', (e) => { if(e.target.isContentEditable) scheduleSave(); });
